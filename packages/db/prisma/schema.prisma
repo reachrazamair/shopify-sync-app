@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  shopifyOrderId  String      @unique @map("shopify_order_id")
+  orderNumber     String      @map("order_number")
+  status          OrderStatus @default(PENDING)
+  totalPrice      Decimal     @map("total_price") @db.Decimal(10, 2)
+  currency        String      @db.VarChar(3)
+  customerEmail   String      @map("customer_email")
+  customerName    String      @map("customer_name")
+  customerPhone   String?     @map("customer_phone")
+  shippingAddress Json?       @map("shipping_address")
+  rawPayload      Json        @map("raw_payload")
+  processedAt     DateTime?   @map("processed_at")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  lineItems LineItem[]
+  syncLogs  SyncLog[]
+
+  @@index([status])
+  @@index([customerEmail])
+  @@index([createdAt])
+  @@index([orderNumber])
+  @@map("orders")
+}
+
+model LineItem {
+  id            String  @id @default(cuid())
+  orderId       String  @map("order_id")
+  shopifyLineId String  @map("shopify_line_id")
+  productTitle  String  @map("product_title")
+  variantTitle  String? @map("variant_title")
+  sku           String?
+  quantity      Int
+  price         Decimal @db.Decimal(10, 2)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, shopifyLineId])
+  @@index([orderId])
+  @@map("line_items")
+}
+
+model SyncLog {
+  id            String     @id @default(cuid())
+  orderId       String?    @map("order_id")
+  eventType     String     @map("event_type")
+  status        SyncStatus @default(PENDING)
+  errorMessage  String?    @map("error_message")
+  workflowRunId String?    @map("workflow_run_id")
+  activityName  String?    @map("activity_name")
+  durationMs    Int?       @map("duration_ms")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  completedAt   DateTime?  @map("completed_at")
+
+  order Order? @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([workflowRunId])
+  @@index([createdAt])
+  @@map("sync_logs")
+}
+
+model Product {
+  id               String   @id @default(cuid())
+  shopifyProductId String   @unique @map("shopify_product_id")
+  title            String
+  vendor           String?
+  productType      String?  @map("product_type")
+  handle           String?
+  status           String?
+  lastSyncedAt     DateTime @map("last_synced_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("products")
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum SyncStatus {
+  PENDING
+  SUCCESS
+  FAILURE
+}
