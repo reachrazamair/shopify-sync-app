@@ -7,7 +7,7 @@
     "build": "tsc",
     "dev": "tsx watch --env-file .env src/server.ts",
     "dev:worker": "tsx watch --env-file .env worker.ts",
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "start:worker": "node dist/worker.js",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
