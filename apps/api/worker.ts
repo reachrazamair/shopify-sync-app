@@ -30,7 +30,7 @@ async function run() {
     // Use .ts in dev (tsx), .js in production (compiled)
     workflowsPath: join(
       __dirname,
-      env.NODE_ENV === 'production'
+      __filename.endsWith('.js')
         ? './src/temporal/workflows/orderSync.js'
         : './src/temporal/workflows/orderSync.ts',
     ),
