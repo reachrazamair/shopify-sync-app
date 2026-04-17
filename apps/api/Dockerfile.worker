@@ -1,0 +1,43 @@
+FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+WORKDIR /app
+
+# Install dependencies
+FROM base AS deps
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/db/package.json ./packages/db/
+COPY packages/types/package.json ./packages/types/
+RUN pnpm install --frozen-lockfile
+
+# Build
+FROM deps AS builder
+COPY tsconfig.base.json ./
+COPY packages/types ./packages/types
+COPY packages/db ./packages/db
+COPY apps/api ./apps/api
+RUN pnpm --filter @repo/types build
+RUN pnpm --filter @repo/db build
+RUN pnpm --filter @repo/api build
+
+# Run
+FROM node:20-alpine AS runner
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/db/package.json ./packages/db/
+COPY packages/types/package.json ./packages/types/
+RUN pnpm install --frozen-lockfile --prod
+
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/packages/db/dist ./packages/db/dist
+COPY --from=builder /app/packages/db/prisma ./packages/db/prisma
+COPY --from=builder /app/packages/types/dist ./packages/types/dist
+
+WORKDIR /app/apps/api
+RUN pnpm exec prisma generate --schema=../../packages/db/prisma/schema.prisma
+
+CMD ["node", "dist/worker.js"]
