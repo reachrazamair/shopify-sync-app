@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createHmac, timingSafeEqual } from 'crypto';
 
-function verifySession(sessionCookie: string | undefined): boolean {
+async function verifySession(sessionCookie: string | undefined): Promise<boolean> {
   if (!sessionCookie) return false;
 
   const secret = process.env['SESSION_SECRET'];
@@ -16,15 +15,24 @@ function verifySession(sessionCookie: string | undefined): boolean {
   const ts = parseInt(timestamp, 10);
   if (isNaN(ts) || Date.now() - ts > 86_400_000) return false;
 
-  const expected = createHmac('sha256', secret).update(timestamp).digest('hex');
-  try {
-    return timingSafeEqual(Buffer.from(expected), Buffer.from(hmac));
-  } catch {
-    return false;
-  }
+  // Use Web Crypto API (Edge Runtime compatible)
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(timestamp));
+  const expected = Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  return expected === hmac;
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow login page and its API route without auth
@@ -34,7 +42,7 @@ export function proxy(request: NextRequest) {
 
   const session = request.cookies.get('session')?.value;
 
-  if (!verifySession(session)) {
+  if (!await verifySession(session)) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('from', pathname);
     return NextResponse.redirect(loginUrl);
