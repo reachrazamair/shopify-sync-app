@@ -10,12 +10,15 @@ export async function getTemporalClient(): Promise<Client> {
     ? await Connection.connect({ address: env.TEMPORAL_ADDRESS })
     : await Connection.connect({
         address: env.TEMPORAL_ADDRESS,
-        tls: {
-          clientCertPair: {
-            crt: Buffer.from(env.TEMPORAL_TLS_CERT ?? '', 'base64'),
-            key: Buffer.from(env.TEMPORAL_TLS_KEY ?? '', 'base64'),
-          },
-        },
+        tls: env.TEMPORAL_API_KEY
+          ? true
+          : {
+              clientCertPair: {
+                crt: Buffer.from(env.TEMPORAL_TLS_CERT ?? '', 'base64'),
+                key: Buffer.from(env.TEMPORAL_TLS_KEY ?? '', 'base64'),
+              },
+            },
+        apiKey: env.TEMPORAL_API_KEY,
       });
 
   _client = new Client({ connection, namespace: env.TEMPORAL_NAMESPACE });

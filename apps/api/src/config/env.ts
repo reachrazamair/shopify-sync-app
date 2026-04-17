@@ -19,6 +19,7 @@ const envSchema = z.object({
     .string()
     .transform((v) => v === 'true')
     .default('true'),
+  TEMPORAL_API_KEY: z.string().optional(),
   TEMPORAL_TLS_CERT: z.string().optional(),
   TEMPORAL_TLS_KEY: z.string().optional(),
 

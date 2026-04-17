@@ -12,12 +12,15 @@ async function run() {
     ? await NativeConnection.connect({ address: env.TEMPORAL_ADDRESS })
     : await NativeConnection.connect({
         address: env.TEMPORAL_ADDRESS,
-        tls: {
-          clientCertPair: {
-            crt: Buffer.from(env.TEMPORAL_TLS_CERT ?? '', 'base64'),
-            key: Buffer.from(env.TEMPORAL_TLS_KEY ?? '', 'base64'),
-          },
-        },
+        tls: env.TEMPORAL_API_KEY
+          ? true
+          : {
+              clientCertPair: {
+                crt: Buffer.from(env.TEMPORAL_TLS_CERT ?? '', 'base64'),
+                key: Buffer.from(env.TEMPORAL_TLS_KEY ?? '', 'base64'),
+              },
+            },
+        apiKey: env.TEMPORAL_API_KEY,
       });
 
   const worker = await Worker.create({
