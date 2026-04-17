@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { Suspense } from 'react';
 import { prisma } from '@repo/db';
 import { Nav } from '@/components/nav';
