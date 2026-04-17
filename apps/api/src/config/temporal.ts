@@ -18,7 +18,7 @@ export async function getTemporalClient(): Promise<Client> {
                 key: Buffer.from(env.TEMPORAL_TLS_KEY ?? '', 'base64'),
               },
             },
-        apiKey: env.TEMPORAL_API_KEY,
+        ...(env.TEMPORAL_API_KEY ? { apiKey: env.TEMPORAL_API_KEY } : {}),
       });
 
   _client = new Client({ connection, namespace: env.TEMPORAL_NAMESPACE });

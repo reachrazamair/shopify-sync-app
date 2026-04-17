@@ -20,7 +20,7 @@ async function run() {
                 key: Buffer.from(env.TEMPORAL_TLS_KEY ?? '', 'base64'),
               },
             },
-        apiKey: env.TEMPORAL_API_KEY,
+        ...(env.TEMPORAL_API_KEY ? { apiKey: env.TEMPORAL_API_KEY } : {}),
       });
 
   const worker = await Worker.create({
