@@ -70,6 +70,19 @@ model SyncLog {
   @@map("sync_logs")
 }
 
+model ShopifyConnection {
+  id               String   @id @default(cuid())
+  shopDomain       String   @unique @map("shop_domain")
+  encryptedToken   String   @map("encrypted_token")
+  encryptedSecret  String   @map("encrypted_secret")
+  shopifyWebhookId String?  @map("shopify_webhook_id")
+  webhookTopic     String   @default("orders/create") @map("webhook_topic")
+  connectedAt      DateTime @default(now()) @map("connected_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("shopify_connections")
+}
+
 model Product {
   id               String   @id @default(cuid())
   shopifyProductId String   @unique @map("shopify_product_id")
