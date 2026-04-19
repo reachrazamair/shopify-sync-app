@@ -45,3 +45,13 @@ export interface WebhookStartResponse {
 }
 
 export type OrderListResponse = PaginatedResponse<Order>;
+
+export interface StoreConnectionStatus {
+  connected: boolean;
+  shopDomain?: string;
+  tokenRedacted?: string;
+  webhookRegistered: boolean;
+  shopifyWebhookId?: string;
+  webhookTopic?: string;
+  connectedAt?: string;
+}
