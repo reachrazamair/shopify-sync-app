@@ -36,9 +36,12 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
           <Button onClick={reset} className="w-full">
             Try again
           </Button>
-          <Button variant="outline" className="w-full" asChild>
-            <Link href="/login">Back to login</Link>
-          </Button>
+          <Link
+            href="/login"
+            className="w-full inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          >
+            Back to login
+          </Link>
         </div>
       </div>
     </div>
