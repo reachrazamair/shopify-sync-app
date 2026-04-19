@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { verifyShopifyHmac } from '../../services/hmac.js';
 import { getTemporalClient } from '../../config/temporal.js';
 import { env } from '../../config/env.js';
+import { getActiveConnection } from '../../services/storeConnection.js';
 import type { ShopifyWebhookOrder } from '@repo/types';
 
 export const shopifyWebhookRoutes: FastifyPluginAsync = async (fastify) => {
@@ -20,7 +21,16 @@ export const shopifyWebhookRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(401).send({ error: 'Missing HMAC signature' });
     }
 
-    if (!verifyShopifyHmac(rawBody, signature, env.SHOPIFY_WEBHOOK_SECRET)) {
+    // Read secret from DB (UI-connected store), fall back to env var for existing deployments
+    const connection = await getActiveConnection();
+    const webhookSecret = connection?.webhookSecret ?? env.SHOPIFY_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      request.log.error('No webhook secret configured — connect a store via the dashboard');
+      return reply.status(503).send({ error: 'No store connected' });
+    }
+
+    if (!verifyShopifyHmac(rawBody, signature, webhookSecret)) {
       request.log.warn('Invalid Shopify HMAC signature');
       return reply.status(401).send({ error: 'Invalid signature' });
     }

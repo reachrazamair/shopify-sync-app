@@ -6,6 +6,7 @@ import authPlugin from './plugins/auth.js';
 import { shopifyWebhookRoutes } from './routes/webhooks/shopify.js';
 import { ordersRoutes } from './routes/api/orders.js';
 import { statsRoutes } from './routes/api/stats.js';
+import { storeRoutes } from './routes/api/store.js';
 import { env } from './config/env.js';
 
 export async function buildServer() {
@@ -34,6 +35,7 @@ export async function buildServer() {
   await fastify.register(shopifyWebhookRoutes);
   await fastify.register(ordersRoutes);
   await fastify.register(statsRoutes);
+  await fastify.register(storeRoutes);
 
   // Health check (no auth)
   fastify.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));

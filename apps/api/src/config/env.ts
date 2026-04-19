@@ -7,10 +7,13 @@ const envSchema = z.object({
 
   DATABASE_URL: z.string().min(1),
 
-  SHOPIFY_SHOP_DOMAIN: z.string().min(1),
-  SHOPIFY_ADMIN_API_TOKEN: z.string().min(1),
-  SHOPIFY_WEBHOOK_SECRET: z.string().min(1),
+  SHOPIFY_SHOP_DOMAIN: z.string().optional(),
+  SHOPIFY_ADMIN_API_TOKEN: z.string().optional(),
+  SHOPIFY_WEBHOOK_SECRET: z.string().optional(),
   SHOPIFY_API_VERSION: z.string().default('2024-01'),
+
+  STORE_ENCRYPTION_KEY: z.string().length(64),
+  API_PUBLIC_URL: z.string().url(),
 
   TEMPORAL_ADDRESS: z.string().default('localhost:7233'),
   TEMPORAL_NAMESPACE: z.string().default('default'),

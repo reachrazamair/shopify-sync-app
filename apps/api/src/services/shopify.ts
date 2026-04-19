@@ -1,15 +1,29 @@
 import type { ShopifyProduct } from '@repo/types';
 import { env } from '../config/env.js';
 
-const BASE_URL = `https://${env.SHOPIFY_SHOP_DOMAIN}/admin/api/${env.SHOPIFY_API_VERSION}`;
+export interface ShopifyClientConfig {
+  shopDomain: string;
+  adminApiToken: string;
+  apiVersion?: string;
+}
 
-async function shopifyFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+function baseUrl(config: ShopifyClientConfig): string {
+  return `https://${config.shopDomain}/admin/api/${config.apiVersion ?? env.SHOPIFY_API_VERSION}`;
+}
+
+async function shopifyFetch<T>(
+  config: ShopifyClientConfig,
+  path: string,
+  options?: RequestInit,
+): Promise<T> {
+  const res = await fetch(`${baseUrl(config)}${path}`, {
+    ...options,
     headers: {
-      'X-Shopify-Access-Token': env.SHOPIFY_ADMIN_API_TOKEN,
+      'X-Shopify-Access-Token': config.adminApiToken,
       'Content-Type': 'application/json',
+      ...((options?.headers as Record<string, string>) ?? {}),
     },
-    signal: AbortSignal.timeout(25_000), // 25s — under activity's 30s timeout
+    signal: AbortSignal.timeout(25_000),
   });
 
   if (!res.ok) {
@@ -20,11 +34,60 @@ async function shopifyFetch<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export async function getShopifyProduct(productId: number): Promise<ShopifyProduct | null> {
+export async function getShopifyProduct(
+  config: ShopifyClientConfig,
+  productId: number,
+): Promise<ShopifyProduct | null> {
   try {
-    const data = await shopifyFetch<{ product: ShopifyProduct }>(`/products/${productId}.json`);
+    const data = await shopifyFetch<{ product: ShopifyProduct }>(
+      config,
+      `/products/${productId}.json`,
+    );
     return data.product;
   } catch {
     return null;
+  }
+}
+
+export async function validateShopifyCredentials(config: ShopifyClientConfig): Promise<boolean> {
+  try {
+    await shopifyFetch<unknown>(config, '/shop.json');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function registerWebhook(
+  config: ShopifyClientConfig,
+  topic: string,
+  callbackUrl: string,
+): Promise<{ id: number; topic: string; address: string }> {
+  const data = await shopifyFetch<{ webhook: { id: number; topic: string; address: string } }>(
+    config,
+    '/webhooks.json',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        webhook: { topic, address: callbackUrl, format: 'json' },
+      }),
+    },
+  );
+  return data.webhook;
+}
+
+export async function deleteWebhook(
+  config: ShopifyClientConfig,
+  webhookId: string,
+): Promise<void> {
+  const res = await fetch(`${baseUrl(config)}/webhooks/${webhookId}.json`, {
+    method: 'DELETE',
+    headers: { 'X-Shopify-Access-Token': config.adminApiToken },
+    signal: AbortSignal.timeout(25_000),
+  });
+  // 404 = already deleted on Shopify side — acceptable
+  if (!res.ok && res.status !== 404) {
+    const text = await res.text();
+    throw new Error(`Shopify delete webhook error ${res.status}: ${text}`);
   }
 }
