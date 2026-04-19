@@ -7,8 +7,31 @@ import { StatsCards } from '@/components/dashboard/StatsCards';
 import { VolumeChartWrapper } from '@/components/dashboard/VolumeChartWrapper';
 import { RecentOrders } from '@/components/dashboard/RecentOrders';
 import { AutoRefresh } from '@/components/AutoRefresh';
+import { NotConnectedState } from '@/components/NotConnectedState';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { StatsResponse, Order } from '@repo/types';
+import type { StatsResponse, Order, StoreConnectionStatus } from '@repo/types';
+
+async function getConnectionStatus(): Promise<StoreConnectionStatus> {
+  const row = await prisma.shopifyConnection.findFirst({
+    select: {
+      shopDomain: true,
+      shopifyWebhookId: true,
+      webhookTopic: true,
+      connectedAt: true,
+    },
+  });
+
+  if (!row) return { connected: false, webhookRegistered: false };
+
+  return {
+    connected: true,
+    shopDomain: row.shopDomain,
+    webhookRegistered: row.shopifyWebhookId !== null,
+    shopifyWebhookId: row.shopifyWebhookId ?? undefined,
+    webhookTopic: row.webhookTopic,
+    connectedAt: row.connectedAt.toISOString(),
+  };
+}
 
 async function getStats(): Promise<StatsResponse> {
   const today = new Date();
@@ -74,20 +97,32 @@ async function getRecentOrders(): Promise<Order[]> {
 }
 
 export default async function DashboardPage() {
-  const [stats, recentOrders] = await Promise.all([getStats(), getRecentOrders()]);
+  const connectionStatus = await getConnectionStatus();
 
   return (
     <div className="flex flex-col min-h-screen">
       <AutoRefresh intervalMs={10000} />
-      <Nav />
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
-        <h1 className="text-xl font-semibold">Dashboard</h1>
-        <Suspense fallback={<Skeleton className="h-28 w-full" />}>
-          <StatsCards stats={stats} />
-        </Suspense>
-        <VolumeChartWrapper data={stats.dailyVolume} />
-        <RecentOrders orders={recentOrders} />
-      </main>
+      <Nav connectionStatus={connectionStatus} />
+      {connectionStatus.connected ? (
+        <ConnectedDashboard />
+      ) : (
+        <NotConnectedState />
+      )}
     </div>
+  );
+}
+
+async function ConnectedDashboard() {
+  const [stats, recentOrders] = await Promise.all([getStats(), getRecentOrders()]);
+
+  return (
+    <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
+      <h1 className="text-xl font-semibold">Dashboard</h1>
+      <Suspense fallback={<Skeleton className="h-28 w-full" />}>
+        <StatsCards stats={stats} />
+      </Suspense>
+      <VolumeChartWrapper data={stats.dailyVolume} />
+      <RecentOrders orders={recentOrders} />
+    </main>
   );
 }

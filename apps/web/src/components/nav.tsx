@@ -3,13 +3,19 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { StoreStatusIndicator } from '@/components/StoreStatusIndicator';
+import type { StoreConnectionStatus } from '@repo/types';
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
   { href: '/orders', label: 'Orders' },
 ];
 
-export function Nav() {
+interface NavProps {
+  connectionStatus: StoreConnectionStatus;
+}
+
+export function Nav({ connectionStatus }: NavProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -38,6 +44,7 @@ export function Nav() {
             </Link>
           ))}
         </nav>
+        <StoreStatusIndicator initialStatus={connectionStatus} />
         <button
           onClick={handleLogout}
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"

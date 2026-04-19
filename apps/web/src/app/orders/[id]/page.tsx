@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ProcessingTimeline } from '@/components/orders/ProcessingTimeline';
-import type { OrderStatus, SyncLog } from '@repo/types';
+import type { OrderStatus, SyncLog, StoreConnectionStatus } from '@repo/types';
 
 type OrderDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -21,16 +21,34 @@ const statusVariant: Record<OrderStatus, 'default' | 'secondary' | 'destructive'
   FAILED: 'destructive',
 };
 
+async function getConnectionStatus(): Promise<StoreConnectionStatus> {
+  const row = await prisma.shopifyConnection.findFirst({
+    select: { shopDomain: true, shopifyWebhookId: true, webhookTopic: true, connectedAt: true },
+  });
+  if (!row) return { connected: false, webhookRegistered: false };
+  return {
+    connected: true,
+    shopDomain: row.shopDomain,
+    webhookRegistered: row.shopifyWebhookId !== null,
+    shopifyWebhookId: row.shopifyWebhookId ?? undefined,
+    webhookTopic: row.webhookTopic,
+    connectedAt: row.connectedAt.toISOString(),
+  };
+}
+
 export default async function OrderDetailPage(props: OrderDetailPageProps) {
   const { id } = await props.params;
 
-  const order = await prisma.order.findUnique({
-    where: { id },
-    include: {
-      lineItems: true,
-      syncLogs: { orderBy: { createdAt: 'asc' } },
-    },
-  });
+  const [connectionStatus, order] = await Promise.all([
+    getConnectionStatus(),
+    prisma.order.findUnique({
+      where: { id },
+      include: {
+        lineItems: true,
+        syncLogs: { orderBy: { createdAt: 'asc' } },
+      },
+    }),
+  ]);
 
   if (!order) notFound();
 
@@ -52,7 +70,7 @@ export default async function OrderDetailPage(props: OrderDetailPageProps) {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Nav />
+      <Nav connectionStatus={connectionStatus} />
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
         {/* Header */}
         <div className="flex items-center gap-4">
