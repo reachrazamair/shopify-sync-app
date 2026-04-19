@@ -12,7 +12,7 @@ export async function apiFetch<T>(
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
       'x-api-key': API_KEY,
       ...options?.headers,
     },
@@ -20,6 +20,10 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     throw new Error(`API error ${res.status}: ${await res.text()}`);
+  }
+
+  if (res.status === 204) {
+    return undefined as T;
   }
 
   return res.json() as Promise<T>;
